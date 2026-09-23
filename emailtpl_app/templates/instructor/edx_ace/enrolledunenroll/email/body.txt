@@ -1,0 +1,5 @@
+{% load i18n %}[SAMPLE OVERRIDE CONTENT -- not production copy]
+
+{% blocktrans trimmed %}You have been unenrolled from {{ course_name }} by course staff.{% endblocktrans %}
+
+-- {% blocktrans trimmed %}{{ site_name }}{% endblocktrans %}

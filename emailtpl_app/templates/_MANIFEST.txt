@@ -1,0 +1,22 @@
+Families covered (v1 scope: Enrollment and instructor operations):
+  instructor/edx_ace/accountcreationandenrollment/email/
+  instructor/edx_ace/allowedenroll/email/
+  instructor/edx_ace/allowedunenroll/email/
+  instructor/edx_ace/enrollenrolled/email/
+  instructor/edx_ace/enrolledunenroll/email/
+  instructor/edx_ace/addbetatester/email/
+  instructor/edx_ace/removebetatester/email/
+  support/edx_ace/wholecoursereset/email/
+
+Names are relative to the Django DIRS root that corresponds to the
+edx-platform "lms/templates/" directory (see README "Open assumptions").
+
+All templates use {% load i18n %} + {% blocktrans %} so a single packaged
+file renders correctly under any active Django language/locale, the same
+way upstream edx-platform templates do -- no per-language copies of these
+files are needed. Per-language *admin-authored* content instead goes in
+the EmailFamilyOverride registry model (models.py), which has an explicit
+`language` column.
+
+See docs/TEMPLATE_VARIABLES.md for which context variables are verified
+against edx-platform source vs. inferred.

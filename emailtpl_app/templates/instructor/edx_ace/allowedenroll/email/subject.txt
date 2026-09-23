@@ -1,0 +1,1 @@
+{% load i18n %}{% blocktrans trimmed %}You have been invited to enroll in {{ course_name }}{% endblocktrans %}

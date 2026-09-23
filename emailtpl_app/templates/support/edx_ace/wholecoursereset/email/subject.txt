@@ -1,0 +1,1 @@
+{% load i18n %}{% blocktrans trimmed %}Your course progress for {{ display_name }} has been reset{% endblocktrans %}

@@ -1,0 +1,1 @@
+{% load i18n %}{% blocktrans trimmed %}Welcome to {{ course_name }}{% endblocktrans %}

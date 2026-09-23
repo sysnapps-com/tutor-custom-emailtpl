@@ -1,0 +1,5 @@
+{% load i18n %}[SAMPLE OVERRIDE CONTENT -- not production copy]
+
+{% blocktrans trimmed %}As requested, your progress in {{ display_name }} has been reset so you can retake the course from the beginning. Visit {{ course_url }} whenever you are ready.{% endblocktrans %}
+
+-- {% blocktrans trimmed %}{{ site_name }} Support{% endblocktrans %}

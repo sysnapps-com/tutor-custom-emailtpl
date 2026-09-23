@@ -1,0 +1,5 @@
+{% load i18n %}[SAMPLE OVERRIDE CONTENT -- not production copy]
+
+{% blocktrans trimmed %}Your invitation to enroll in {{ course_name }} has been withdrawn by course staff.{% endblocktrans %}
+
+-- {% blocktrans trimmed %}{{ site_name }}{% endblocktrans %}

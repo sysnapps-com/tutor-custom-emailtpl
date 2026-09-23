@@ -1,0 +1,1 @@
+{% load i18n %}{% blocktrans trimmed %}Your enrollment invitation for {{ course_name }} was withdrawn{% endblocktrans %}

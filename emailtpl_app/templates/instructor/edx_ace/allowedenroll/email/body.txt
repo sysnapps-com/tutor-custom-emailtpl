@@ -1,0 +1,5 @@
+{% load i18n %}[SAMPLE OVERRIDE CONTENT -- not production copy]
+
+{% blocktrans trimmed %}You have been invited to enroll in {{ course_name }}. Visit {{ course_url }} or register at {{ registration_url }} to accept.{% endblocktrans %}
+
+-- {% blocktrans trimmed %}{{ site_name }}{% endblocktrans %}
