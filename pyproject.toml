@@ -29,7 +29,8 @@ dev = [
 emailtpl = "tutor_custom_emailtpl.plugin"
 
 [tool.setuptools.packages.find]
+where = ["."]
 include = ["tutor_custom_emailtpl*"]
 
 [tool.setuptools.package-data]
-emailtpl_app = ["templates/**/*"]
+"tutor_custom_emailtpl.emailtpl_app" = ["templates/**/*"]
