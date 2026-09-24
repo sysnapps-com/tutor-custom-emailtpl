@@ -29,6 +29,7 @@ dev = [
 emailtpl = "tutor_custom_emailtpl.plugin"
 
 [tool.setuptools.packages.find]
+where = ["."]
 include = ["tutor_custom_emailtpl*"]
 
 [tool.setuptools.package-data]
