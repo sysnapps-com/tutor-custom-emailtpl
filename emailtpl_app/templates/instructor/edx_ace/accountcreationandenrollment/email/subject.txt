@@ -1,1 +1,1 @@
-{% load i18n %}{% blocktrans trimmed %}Welcome to {{ course_name }}{% endblocktrans %}
+{% load i18n %}{% blocktrans trimmed %}¡Te damos la bienvenida a {{ platform_name }}!{% endblocktrans %}
