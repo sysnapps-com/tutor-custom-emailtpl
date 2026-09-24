@@ -64,31 +64,69 @@ RUN pip install "{{ EMAILTPL_INSTALL_SOURCE }}"
 )
 
 # --- Wire the Django app + template DIRS into LMS/CMS settings -------------
+#
+# SAFETY (see README "Open assumptions" / bug report on DATABASES corruption):
+# this patch must NEVER raise. It runs inside edx-platform's own generated
+# settings module, sharing that module's global namespace with everything
+# else the module still has left to execute after this patch's insertion
+# point -- including, in some renderings, DATABASES construction further
+# down the same file. An uncaught exception here aborts the rest of that
+# module's execution silently from Django's perspective (no import-time
+# traceback is guaranteed to surface before something later tries to use a
+# half-initialized settings module), which is the leading suspect behind
+# DATABASES ending up incomplete when this plugin is enabled. Accordingly:
+#   - never assign to DATABASES or TEMPLATES wholesale
+#   - never raise; a missing engine or an already-present entry is a no-op,
+#     not an error (EMAILTPL_FAIL_OPEN_TO_UPSTREAM governs *diagnostics*
+#     via check_email_templates, not settings-import behavior, which must
+#     always fail open)
+#   - explicit `import os` -- never assume it's already in scope
+#   - idempotent: guard INSTALLED_APPS append and DIRS insert so re-running
+#     this block (e.g. if a future Tutor version applies patches twice, or
+#     LMS/CMS share the rendered module) never duplicates entries
 hooks.Filters.ENV_PATCHES.add_item(
     (
         "openedx-common-settings",
         """
 # tutor-custom-emailtpl: enrollment/instructor ACE email template overrides.
+# This block must never raise -- see plugin.py comment above add_item() for why.
 if {{ EMAILTPL_ENABLED }}:
-    INSTALLED_APPS.append("emailtpl_app")
+    import os as _emailtpl_os
 
-    import emailtpl_app
-    _EMAILTPL_TEMPLATE_DIR = os.path.join(
-        os.path.dirname(emailtpl_app.__file__), "templates"
-    )
+    if "emailtpl_app" not in INSTALLED_APPS:
+        INSTALLED_APPS.append("emailtpl_app")
 
-    # Locate the Django (not Mako) template engine by BACKEND rather than
-    # assuming TEMPLATES[0] -- Ulmo/Verawood's common.py is documented as
-    # configuring more than one engine (see README "Open assumptions").
-    for _engine in TEMPLATES:
-        if _engine.get("BACKEND") == "django.template.backends.django.DjangoTemplates":
-            _engine["DIRS"].insert(0, _EMAILTPL_TEMPLATE_DIR)
-            break
-    else:
-        raise RuntimeError(
-            "tutor-custom-emailtpl: no django.template.backends.django.DjangoTemplates "
-            "engine found in TEMPLATES; cannot install override DIRS."
+    try:
+        import emailtpl_app as _emailtpl_app_module
+
+        _EMAILTPL_TEMPLATE_DIR = _emailtpl_os.path.join(
+            _emailtpl_os.path.dirname(_emailtpl_app_module.__file__), "templates"
         )
+
+        # Locate the Django (not Mako) template engine by BACKEND rather than
+        # assuming TEMPLATES[0] -- Ulmo/Verawood's common.py is documented as
+        # configuring more than one engine (see README "Open assumptions").
+        # Mutates the existing engine dict's DIRS list in place; TEMPLATES
+        # itself is never reassigned, and every pre-existing entry is kept.
+        for _emailtpl_engine in TEMPLATES:
+            if _emailtpl_engine.get("BACKEND") == "django.template.backends.django.DjangoTemplates":
+                _emailtpl_engine.setdefault("DIRS", [])
+                if _EMAILTPL_TEMPLATE_DIR not in _emailtpl_engine["DIRS"]:
+                    _emailtpl_engine["DIRS"].insert(0, _EMAILTPL_TEMPLATE_DIR)
+                break
+        # No matching engine: fail open (skip the override) rather than raise.
+        # Diagnose this case with `check_email_templates --strict` instead,
+        # which is safe to fail loudly since it runs as a standalone command,
+        # not inside settings import.
+
+        del _emailtpl_engine
+    except Exception:
+        # Fail open unconditionally at settings-import time, regardless of
+        # EMAILTPL_FAIL_OPEN_TO_UPSTREAM -- an exception here must never be
+        # allowed to corrupt the rest of this settings module's execution.
+        pass
+
+    del _emailtpl_os
 """,
     )
 )
