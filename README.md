@@ -1,64 +1,16 @@
 # tutor-custom-emailtpl (v1.1)
 
-
 A Tutor plugin + companion Django app that lets an Open edX administrator
 customize a subset of ACE-driven email templates without editing
 `edx-platform` source or the Docker image, and without losing the
 customization on upgrade.
 
-## What's new in v1.1
+Repository: https://github.com/sysnapps-com/tutor-custom-emailtpl
 
-- **Renamed** `tutor-contrib-emailoverrides` → `tutor-custom-emailtpl` *Formerly `tutor-contrib-emailoverrides`. Renamed -- see "Renamed from v1" below if you have the old package installed.*
-  (package, Tutor plugin name, Django app, config keys, management
-  command). See "Renamed from v1" below.
-- **Verified template variables.** The previous version's context
-  variables (`course_name`, `platform_name`) were unverified placeholders
-  and were wrong. They're replaced with `display_name` and `site_name`,
-  confirmed against edx-platform's own docstrings -- see
-  [`docs/TEMPLATE_VARIABLES.md`](docs/TEMPLATE_VARIABLES.md) for the full,
-  cited list of which variables are verified vs. still inferred.
-- **Multi-language support.** Packaged templates now use
-  `{% load i18n %}` + `{% blocktrans %}` so one file renders correctly
-  under any active learner language, same as upstream. The admin registry
-  model gained a `language` column for per-locale custom copy. See
-  "Multi-language behavior" below.
-- **New flags** on `check_email_templates` (renamed from
-  `check_email_overrides`): `--family`, `--language`, `--json`, in
-  addition to the existing `--strict`.
-- **Corrected `pyproject.toml`:** `tutor>=22.0.0,<23.0.0` (was wrongly
-  pinned to `<19.0.0`; Tutor v22 is the release that added Verawood
-  support), Python floor raised to `>=3.10` (Tutor v22 itself requires
-  3.10+), and a `dev` extra for test-only dependencies.
-- **MIT license added** (`LICENSE`), replacing the earlier unstated
-  license. Includes the standard "AS IS" warranty disclaimer.
-- **Ulmo compatibility checked** -- see "Ulmo compatibility" below.
+## v1.1 scope: Enrollment and instructor operations ONLY
 
-## Renamed from v1
-
-If you have `tutor-contrib-emailoverrides` enabled from the previous
-version:
-
-```bash
-tutor plugins disable emailoverrides
-pip uninstall tutor-contrib-emailoverrides
-pip install tutor-custom-emailtpl
-tutor plugins enable emailtpl
-tutor config save
-```
-
-The old `EMAILOVERRIDES_*` config keys are gone; their replacements are
-`EMAILTPL_*` (see "Configuration keys" below). The old
-`check_email_overrides` command is renamed `check_email_templates`. The
-registry model's table name and app label changed
-(`emailoverride_app` → `emailtpl_app`); if you had populated the old
-`EmailFamilyOverride` table, re-enter that content after upgrading --
-this version does not ship a data migration from the old table, since the
-schema also gained a `language` column (see below) that has no equivalent
-in the old data.
-
-## v1 scope: Enrollment and instructor operations ONLY
-
-Unchanged from v1 -- these 8 ACE message families and nothing else:
+This version implements exactly these 8 ACE message families and nothing
+else:
 
 | Family key | Upstream template path |
 |---|---|
@@ -74,31 +26,27 @@ Unchanged from v1 -- these 8 ACE message families and nothing else:
 Each family has 5 ACE components: `from_name.txt`, `subject.txt`,
 `body.html`, `head.html`, `body.txt`.
 
-### Not yet supported (explicitly out of scope for v1)
+### Not yet supported (explicitly out of scope for v1.1)
 
 Accounts/Authentication, Course communication/Schedules, Discussions,
-Notifications, Certificates, Bulk email, Commerce/Subscriptions. See
-`docs/TEMPLATE_VARIABLES.md` and the v1 README history for why these are
-deferred; the architecture generalizes to them without a redesign.
+Notifications, Certificates, Bulk email, Commerce/Subscriptions. The
+architecture generalizes to these without a redesign -- see "Extending to
+the next category" below.
 
-## Verified template variables (v1.2 correction)
+## Verified template variables
 
 See **[`docs/TEMPLATE_VARIABLES.md`](docs/TEMPLATE_VARIABLES.md)** for
-the full, cited breakdown -- including a v1.1 -> v1.2 correction:
-**the real variable is `course_name`, not `display_name`**, and
-`instructor:accountcreationandenrollment` (the family behind the legacy
-instructor-dashboard **CSV auto-register/auto-enroll** feature) does
-carry a real **`password`** variable, confirmed both by direct
-inspection of edx-platform's own packaged template and by live testing
-on a Verawood instance. Summary:
+the full, cited breakdown. Summary:
 
 - `instructor:accountcreationandenrollment`: `course_name`, `site_name`
-  (a bare domain, not a friendly platform name), `email_address`,
-  `password`, `course_url` -- empirically confirmed.
+  (a bare domain, e.g. `example.tld`, not a friendly platform name),
+  `email_address`, `password`, `course_url` -- confirmed both by direct
+  inspection of edx-platform's own packaged template and by live testing
+  on a Verawood instance.
 - The other 6 `instructor:*` families share the same underlying
   `param_dict`-building code path and are treated as using `course_name`
-  too, on that strength (not each individually source-inspected). No
-  `password` variable for these 6 -- they act on existing accounts.
+  too, on that strength. No `password` variable for these 6 -- they act
+  on accounts that already exist.
 - `support:wholecoursereset` has no equivalent documented `param_dict`;
   its `course_name`/`course_id`/`course_url`/`site_name` usage is
   inferred and flagged as **unverified** by `check_email_templates`.
@@ -136,11 +84,11 @@ Two independent mechanisms, don't confuse them:
    language -- untranslated strings simply render in the source language.
 2. **Admin-authored content** in the `EmailFamilyOverride` registry model
    cannot be auto-translated (Django can't translate free text an admin
-   typed into a database field), so v1.1 adds a `language` column: one row
-   per `(family_key, language)` pair. **This registry is still not wired
-   into the actual render path** in v1.1 (see "Customizing content"
-   below) -- it remains scaffolding for a future release that adds a
-   small ACE message override.
+   typed into a database field), so the model has a `language` column:
+   one row per `(family_key, language)` pair. **This registry is not
+   wired into the actual render path** in v1.1 (see "Customizing your own
+   templates" below) -- it remains scaffolding for a future release that
+   adds a small ACE message override.
 
 `check_email_templates --language <code>` renders every in-scope
 component with that language active as a structural smoke test (it does
@@ -167,8 +115,8 @@ not require a real catalog for `<code>` to exist -- it only proves the
   `docs/TEMPLATE_VARIABLES.md` are both independently confirmed present
   on the **Ulmo** published docstring pages, not just Quince.
 - Tutor's own versioning convention ties its major version to the ordinal
-  of the release name's first letter (Aspen→1 ... Ulmo, the 21st letter →
-  21, Verawood, the 22nd → 22), which matches Tutor v22.0.0 shipping
+  of the release name's first letter (Aspen->1 ... Ulmo, the 21st letter
+  -> 21, Verawood, the 22nd -> 22), which matches Tutor v22.0.0 shipping
   Verawood support. Ulmo therefore corresponds to **Tutor v21.x**.
 - What is *not* independently re-verified here: that the `ENV_PATCHES`
   patch names this plugin uses (`openedx-dockerfile-post-python-
@@ -177,19 +125,11 @@ not require a real catalog for `<code>` to exist -- it only proves the
   deprecation notice found in the Verawood/Tutor v22 release notes
   reviewed, but that is inference, not a running-instance confirmation.
 
-To install against Ulmo, override the Tutor pin at install time (do not
-edit `pyproject.toml`'s upper bound blindly -- reinstall with an explicit
-constraint instead so pip's resolver still sees the real published
-range):
+To install against Ulmo, pin Tutor to the matching range instead of
+letting this package's default range resolve:
 
 ```bash
-pip install "tutor>=21.0.0,<22.0.0" tutor-custom-emailtpl --no-deps
-pip install tutor-custom-emailtpl  # then let pip fill in the rest against the pinned tutor
-```
-
-or simpler, in a dedicated virtualenv already running Tutor v21:
-
-```bash
+pip install "tutor>=21.0.0,<22.0.0"
 pip install --no-deps tutor-custom-emailtpl
 ```
 
@@ -199,6 +139,8 @@ took effect on whichever release you're running.
 
 ## Installation
 
+### Option A: install from PyPI (if published)
+
 ```bash
 pip install tutor-custom-emailtpl
 tutor plugins enable emailtpl
@@ -207,14 +149,196 @@ tutor images build openedx
 tutor local launch
 ```
 
+### Option B: install directly from GitHub
+
+```bash
+pip install "git+https://github.com/sysnapps-com/tutor-custom-emailtpl.git"
+tutor plugins enable emailtpl
+tutor config save
+tutor images build openedx
+tutor local launch
+```
+
+To pin a specific tag, release, or branch instead of the default branch,
+append a `@` ref:
+
+```bash
+pip install "git+https://github.com/sysnapps-com/tutor-custom-emailtpl.git@v1.1"
+```
+
+If you're developing locally against a clone rather than installing from
+GitHub directly:
+
+```bash
+git clone https://github.com/sysnapps-com/tutor-custom-emailtpl.git
+pip install -e ./tutor-custom-emailtpl
+tutor plugins enable emailtpl
+tutor config save
+```
+
+An editable install (`-e`) means changes to your local clone -- including
+to the packaged template files under
+`tutor_custom_emailtpl/emailtpl_app/templates/` -- take effect the next
+time you rebuild the openedx image, with no need to reinstall the Python
+package itself.
+
+### Updating to a newer version
+
+**If you installed from PyPI:**
+
+```bash
+pip install --upgrade tutor-custom-emailtpl
+tutor config save
+tutor images build openedx
+tutor local launch
+```
+
+**If you installed from GitHub:**
+
+```bash
+pip install --upgrade --force-reinstall "git+https://github.com/sysnapps-com/tutor-custom-emailtpl.git"
+tutor config save
+tutor images build openedx
+tutor local launch
+```
+
+`pip install --upgrade` alone is not always reliable for a `git+https://`
+source pointed at a moving branch (pip may decide the requirement is
+already "satisfied" and skip re-fetching) -- `--force-reinstall` makes
+sure the latest commit is actually pulled. If you pinned a tag
+(`@v1.1`), change the tag in the URL to the new one you want instead.
+
+**If you installed as an editable clone:**
+
+```bash
+cd tutor-custom-emailtpl
+git pull
+tutor config save
+tutor images build openedx
+tutor local launch
+```
+
+**In every case**, `tutor images build openedx` is required after an
+update -- this is what actually copies the (new) package into the LMS/CMS
+image; `pip install --upgrade` on its own only updates the package in
+your local/host Python environment, not inside the built image. Run
+`check_email_templates` (see "Verifying overrides took effect" below)
+after rebuilding to confirm the new templates actually took precedence.
+
 ## Configuration keys
 
 | Key | Default | Meaning |
 |---|---|---|
 | `EMAILTPL_ENABLED` | `true` | Master on/off switch for the settings patch. |
 | `EMAILTPL_FAIL_OPEN_TO_UPSTREAM` | `true` | Governs the plugin's own defensive template lookups; does not affect Django's own loader fallback behavior. |
-| `EMAILTPL_INSTALL_SOURCE` | `pypi` | How the Dockerfile patch installs this package into the image: `pypi` (default, `pip install tutor-custom-emailtpl`), `none` (skip the patch -- wire up your own install step, e.g. for a local mount during development), or any other string, used verbatim as a pip requirement spec (a VCS URL, a private-index package name, etc). |
+| `EMAILTPL_INSTALL_SOURCE` | `pypi` | How the Dockerfile patch installs this package into the image: `pypi` (default, `pip install tutor-custom-emailtpl`), `none` (skip the patch -- wire up your own install step, e.g. for a local mount during development), or any other string, used verbatim as a pip requirement spec. To match a GitHub install, set this to `git+https://github.com/sysnapps-com/tutor-custom-emailtpl.git` (optionally with an `@ref`) so the *image build* installs from the same place you did on the host. |
 | `EMAILTPL_SUPPORTED_LANGUAGES` | `["en"]` | Informational only -- documents which languages an operator has actually checked with `check_email_templates --language`. Not enforced anywhere; Django will render in any language with an installed catalog regardless of this list. |
+
+## Customizing your own templates
+
+There are two ways to change what these emails say, depending on how much
+you want to change and how you prefer to work.
+
+### Option 1: edit the packaged template files directly (recommended for v1.1)
+
+This is the only method that's actually wired into the render path today
+(see "Option 2" below for why the database-registry approach isn't yet).
+
+1. Get a local copy of the plugin source, either freshly cloned or
+   already installed editable (see "Option B" installs above):
+
+   ```bash
+   git clone https://github.com/sysnapps-com/tutor-custom-emailtpl.git
+   cd tutor-custom-emailtpl
+   ```
+
+2. Find the family you want to change under:
+
+   ```
+   tutor_custom_emailtpl/emailtpl_app/templates/<family-path>/email/
+   ```
+
+   using the "Family key" -> "Upstream template path" table at the top of
+   this README to find `<family-path>` (e.g.
+   `instructor/edx_ace/allowedenroll/email/`).
+
+3. Each family has 5 files -- edit whichever you need:
+
+   | File | Purpose | Format |
+   |---|---|---|
+   | `subject.txt` | Email subject line | plain text, single line |
+   | `from_name.txt` | Display name in the "From" field | plain text, single line |
+   | `body.txt` | Plaintext email body | plain text |
+   | `body.html` | HTML email body | HTML |
+   | `head.html` | Extra `<head>` content for the HTML version | HTML (usually left minimal) |
+
+   Both `body.txt` and `body.html` must be present and non-empty for a
+   given family -- this plugin's registry model enforces "no HTML-only
+   overrides" at the database level, and as a matter of email
+   deliverability/accessibility you should keep that guarantee here too
+   even though nothing mechanically stops you from leaving `body.txt`
+   sparse.
+
+4. Use `{% load i18n %}` and wrap literal text in `{% blocktrans trimmed %}
+   ...{% endblocktrans %}` (as the shipped templates already do) rather
+   than plain `{{ variable }}` interpolation outside a translation tag --
+   this is what lets the same file render correctly for learners in any
+   language your site has a catalog for. See "Multi-language behavior"
+   above.
+
+5. Only use variables listed in
+   [`docs/TEMPLATE_VARIABLES.md`](docs/TEMPLATE_VARIABLES.md) for the
+   family you're editing -- an unlisted variable name doesn't error, it
+   silently renders as blank (Django's default behavior for an undefined
+   template variable). If you reference a variable and it comes out
+   empty in a real test send, check the variable name against that doc
+   first.
+
+6. If you add a value that might contain special characters (a
+   generated password, for example) to a `.txt` component, wrap it in
+   `{% autoescape off %}` / `{% endautoescape %}` -- see the "plaintext
+   escaping" note in `docs/TEMPLATE_VARIABLES.md` for why this matters
+   and what goes wrong if you skip it.
+
+7. Rebuild and relaunch:
+
+   ```bash
+   tutor images build openedx
+   tutor local launch
+   ```
+
+8. Confirm your edit actually took effect and rendered without error:
+
+   ```bash
+   python manage.py lms check_email_templates --family <family-key>
+   ```
+
+   (Run this inside the LMS container, e.g. via `tutor local exec lms
+   ...` if you're not already inside it.) A `MISSING` result or a
+   `TemplateDoesNotExist`-style failure here means a typo in the file
+   path or a Django template syntax error, not a variable problem.
+
+9. Commit your change and push it to your own fork/branch (or your copy
+   of this repository) so `EMAILTPL_INSTALL_SOURCE` can point at it for
+   every environment, rather than keeping a one-off local edit that gets
+   lost on the next clean install. See "Updating to a newer version"
+   above once your own template edits are just another commit to pull.
+
+### Option 2: the `EmailFamilyOverride` registry model (scaffolding, not yet live)
+
+`emailtpl_app.models.EmailFamilyOverride` is a minimal per-language
+database model an admin could populate (via Django admin or a data
+migration) to override subject/body/from-name per family without editing
+template files at all. It reserves `organization_slug` and `course_key`
+fields for future per-org/per-course selection, and a `language` column
+for per-locale content.
+
+**v1.1 does not wire this registry into the actual render path** -- that
+requires a corresponding change inside edx-platform's `enrollment.py` /
+ACE message classes, which this plugin does not vendor or patch, since
+its scope is template overrides via Tutor patches only. Populating this
+model today has no visible effect on sent emails; it's scaffolding for a
+future release. Use Option 1 above for anything you need working now.
 
 ## Verifying overrides took effect
 
@@ -230,22 +354,6 @@ context]` per `docs/TEMPLATE_VARIABLES.md`, and reports per-component
 `django.template.loader.get_template(...).origin` to confirm this
 plugin's package actually won precedence.
 
-## Customizing content
-
-`emailtpl_app.models.EmailFamilyOverride` is a minimal per-language
-registry model an admin can populate (via Django admin or a data
-migration) to override subject/body/from-name per family without
-touching the packaged template files. It reserves (but does not yet use)
-`organization_slug` and `course_key` fields for future per-org/per-course
-selection.
-
-**v1.1 still does not wire this registry into the actual render path**
-(that requires a corresponding change inside edx-platform's
-`enrollment.py` / ACE message classes, which this plugin does not vendor
-or patch). Today, "customization" happens by editing the packaged
-template files directly (using the verified variables above and keeping
-the `{% blocktrans %}` wrapping for i18n) and re-publishing the package.
-
 ## Tests
 
 ```bash
@@ -258,7 +366,9 @@ HTML-only; every family renders under every language in `LANGUAGES`
 without raising (a structural i18n smoke test, not a translation-
 correctness test); a rendered family sends via Django's locmem backend;
 the same path works under Celery's eager-execution mode (skipped if
-`celery` isn't installed -- add the `dev` extra to include it).
+`celery` isn't installed -- add the `dev` extra to include it); the
+legacy CSV auto-register/auto-enroll welcome email specifically renders
+and sends with a working generated password.
 
 ## Open assumptions (validate before production use)
 
@@ -277,6 +387,9 @@ the same path works under Celery's eager-execution mode (skipped if
 5. **Dockerfile install patch** assumes `EMAILTPL_INSTALL_SOURCE=pypi` is
    reachable from a package index at image-build time; use `none` or a
    custom spec otherwise (see "Configuration keys").
+6. **The other 6 `instructor:*` families' `course_name` variable** --
+   confirmed by strong analogy to `accountcreationandenrollment`, not
+   individually source-inspected. See `docs/TEMPLATE_VARIABLES.md`.
 
 ## License
 
@@ -296,5 +409,7 @@ To add another category (e.g. Notifications) later:
 3. Add `FAMILY_CHOICES` entries to `EmailFamilyOverride` (no schema
    change needed for scope fields).
 4. Verify and document that category's context variables in
-   `docs/TEMPLATE_VARIABLES.md` before shipping sample copy for it.
+   `docs/TEMPLATE_VARIABLES.md` before shipping sample copy for it --
+   prefer direct template/source inspection or live-instance testing over
+   docstring prose alone.
 5. No change is needed to the Tutor-side settings patch.
