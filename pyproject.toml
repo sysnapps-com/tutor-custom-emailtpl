@@ -4,33 +4,30 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tutor-custom-emailtpl"
-version = "0.2.0"
+version = "0.2.1"
 description = "Tutor plugin + Django app to override enrollment/instructor ACE email templates without editing edx-platform."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 dependencies = [
-    # Tutor v22.x is the release that added Verawood support (see README
-    # "Target release"); it also raised Tutor's own Python floor to 3.10,
-    # which is why this package's requires-python matches.
     "tutor>=22.0.0,<23.0.0",
 ]
 
 [project.optional-dependencies]
-# Only needed to run the Celery-eager-mode test in
-# emailtpl_app/tests/test_overrides.py; not required at runtime (the LMS/
-# CMS image already provides Celery).
 dev = [
     "celery>=5.3,<6.0",
     "Django>=4.2,<5.3",
 ]
 
 [project.entry-points."tutor.plugin.v1"]
-emailtpl = "tutor_custom_emailtpl.plugin"
+emailtpl = "plugin"
+
+[tool.setuptools]
+py-modules = ["plugin"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["tutor_custom_emailtpl*"]
+include = ["emailtpl_app*"]
 
 [tool.setuptools.package-data]
-"tutor_custom_emailtpl.emailtpl_app" = ["templates/**/*"]
+emailtpl_app = ["templates/**/*"]
