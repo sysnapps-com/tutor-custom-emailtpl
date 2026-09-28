@@ -1,0 +1,15 @@
+name: Protect Templates Folder
+
+on:
+  pull_request:
+    paths:
+      - 'emailtpl_app/templates/**'
+
+jobs:
+  block-template-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if templates are modified
+        run: |
+          echo "Error: Modifications to core template files are restricted and managed independently."
+          exit 1
